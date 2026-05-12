@@ -1,0 +1,5 @@
+# using nan as a list index used to invoke undefined behaviour: (int)nan
+# is UB in c99. safe_dtoi() now raises a helpful language-level error.
+xs = [1, 2, 3]
+nan = 1 / 0.000000000000001 * 1e300 * 1e300 - 1 / 0.000000000000001 * 1e300 * 1e300
+print(xs[nan])

@@ -1,0 +1,77 @@
+# tiny arithmetic expression calculator
+# supports integers, + - * /, parentheses, and operator precedence
+
+fn tokenize(s)
+    toks = []
+    i = 0
+    n = len(s)
+    while i < n do
+        ch = s[i]
+        if ch == " " then
+            i = i + 1
+        else
+            if contains("+-*/()", ch) then
+                push(toks, ch)
+                i = i + 1
+            else
+                j = i
+                while j < n and contains("0123456789", s[j]) do j = j + 1 end
+                push(toks, slice(s, i, j))
+                i = j
+            end
+        end
+    end
+    return toks
+end
+
+state = {"toks": [], "pos": 0}
+
+fn peek() return state.toks[state.pos] end
+fn take()
+    t = state.toks[state.pos]
+    state.pos = state.pos + 1
+    return t
+end
+fn done() return state.pos >= len(state.toks) end
+
+fn parse_expr()
+    left = parse_mul()
+    while not done() and (peek() == "+" or peek() == "-") do
+        op = take()
+        right = parse_mul()
+        if op == "+" then left = left + right else left = left - right end
+    end
+    return left
+end
+
+fn parse_mul()
+    left = parse_atom()
+    while not done() and (peek() == "*" or peek() == "/") do
+        op = take()
+        right = parse_atom()
+        if op == "*" then left = left * right else left = left / right end
+    end
+    return left
+end
+
+fn parse_atom()
+    t = take()
+    if t == "(" then
+        v = parse_expr()
+        take()
+        return v
+    end
+    return num(t)
+end
+
+fn eval_expr(s)
+    state.toks = tokenize(s)
+    state.pos = 0
+    return parse_expr()
+end
+
+# examples
+print(eval_expr("2 + 3 * 4"))          # 14
+print(eval_expr("(2 + 3) * 4"))        # 20
+print(eval_expr("100 - 20 / 4"))       # 95
+print(eval_expr("(1 + 2) * (3 + 4)"))  # 21

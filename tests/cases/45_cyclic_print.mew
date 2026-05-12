@@ -1,0 +1,22 @@
+# cyclic containers would have recursed infinitely through value_format.
+# the formatter now caps nesting at 64 levels and prints "[...]" / "{...}"
+# for anything deeper, so these programs terminate with a readable result.
+l = []
+push(l, 1)
+push(l, l)
+print(l)
+
+m = {}
+m["self"] = m
+print(m)
+
+# very deep but acyclic list also terminates (one level past the cap
+# becomes "[...]" so it always prints and never overflows the c stack).
+deep = []
+cur = deep
+for i = 1 to 200 do
+    inner = []
+    push(cur, inner)
+    cur = inner
+end
+print(len(deep))

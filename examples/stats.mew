@@ -1,0 +1,64 @@
+# compute min, max, mean, median, stddev for a list of numbers
+# reads whitespace separated numbers from a file or stdin
+
+fn stats(xs)
+    n = len(xs)
+    if n == 0 then return nil end
+    sorted = sort(xs)
+    total = 0
+    for v in xs do total = total + v end
+    mean = total / n
+    if n % 2 == 1 then
+        median = sorted[floor(n / 2)]
+    else
+        median = (sorted[n / 2 - 1] + sorted[n / 2]) / 2
+    end
+    var = 0
+    for v in xs do var = var + (v - mean) * (v - mean) end
+    var = var / n
+    return {
+        "n": n,
+        "min": sorted[0],
+        "max": sorted[n - 1],
+        "mean": mean,
+        "median": median,
+        "stddev": sqrt(var)
+    }
+end
+
+fn parse_numbers(text)
+    nums = []
+    for tok in split(replace(replace(text, "\n", " "), "\t", " "), " ") do
+        if len(tok) > 0 then
+            x = num(tok)
+            if x != nil then push(nums, x) end
+        end
+    end
+    return nums
+end
+
+a = args()
+if len(a) > 0 then
+    text = read_file(a[0])
+    if text == nil then error("cannot read " .. a[0]) end
+else
+    text = ""
+    line = read()
+    while line != nil do
+        text = text .. "\n" .. line
+        line = read()
+    end
+end
+
+xs = parse_numbers(text)
+s = stats(xs)
+if s == nil then
+    print("no numbers found")
+else
+    print("n =", s.n)
+    print("min =", s.min)
+    print("max =", s.max)
+    print("mean =", s.mean)
+    print("median =", s.median)
+    print("stddev =", s.stddev)
+end

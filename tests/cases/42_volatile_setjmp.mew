@@ -1,0 +1,18 @@
+# regression: parse_program uses setjmp to free partial ast on error.
+# the local variable 'block' is written after setjmp, so it must be volatile
+# or the optimiser may read a stale value after longjmp. this test does not
+# exercise that path directly (the repl layer does), but it verifies the
+# normal parse path works under heavy use, which used to spuriously skip the
+# first statement in -O2 builds before the volatile fix.
+fn run()
+    count = 0
+    for i = 1 to 50 do
+        count = count + i
+    end
+    return count
+end
+
+# three sequential prints: all must appear
+print("a")
+print(run())
+print("b")

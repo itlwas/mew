@@ -1,0 +1,23 @@
+# regression: verify arithmetic overflows inside string/container
+# builtins. these inputs used to silently wrap an int and either loop
+# forever, over-allocate or under-allocate buffers.
+
+# repeat: finite but big count is rejected before wrapping
+print(len(repeat("a", 1000)))          # 1000
+print(len(repeat("", 1000000)))        # 0 (empty string times any count)
+print(len(repeat("ab", 0)))            # 0
+
+# join: total length computed with overflow guard
+xs = []
+for i = 1 to 100 do push(xs, "xy") end
+print(len(join(xs, "-")))              # 100*2 + 99 = 299
+
+# replace: buffer doubled with saturated growth
+s = repeat("ab", 1000)
+r = replace(s, "ab", "xyz")
+print(len(r))                           # 3000
+
+# concat chain: string size checks before memcpy
+a = repeat("x", 10000)
+b = repeat("y", 10000)
+print(len(a .. b))                      # 20000

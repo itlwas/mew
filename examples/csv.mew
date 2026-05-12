@@ -1,0 +1,22 @@
+# read a csv file, print rows as maps using first line as header
+fn parse_csv(path)
+    ls = lines(path)
+    if ls == nil or len(ls) == 0 then return [] end
+    header = split(ls[0], ",")
+    rows = []
+    for i = 1 to len(ls) - 1 do
+        cells = split(ls[i], ",")
+        row = {}
+        for j = 0 to len(header) - 1 do
+            if j < len(cells) then row[header[j]] = cells[j] end
+        end
+        push(rows, row)
+    end
+    return rows
+end
+
+# demo with a synthetic file so this is runnable without external data
+write_file("tmp.csv", "name,age\nalice,30\nbob,25")
+for row in parse_csv("tmp.csv") do
+    print(row.name .. " is " .. row.age)
+end

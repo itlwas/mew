@@ -1,0 +1,17 @@
+# nan, inf, -inf formatting uses isnan/isinf (not n!=n and 1.0/0.0 compare)
+inf_val = 1 / 0.000000000000001 * 1e300 * 1e300
+ninf    = -inf_val
+# 0/0 would die "division by zero", so derive NaN from inf - inf
+nan_val = inf_val - inf_val
+
+print(str(inf_val))
+print(str(ninf))
+print(str(nan_val))
+
+# nan compares unequal even to itself (ieee 754)
+print(nan_val == nan_val)
+
+# regular numbers still format cleanly
+print(42)
+print(3.14)
+print(1000000)

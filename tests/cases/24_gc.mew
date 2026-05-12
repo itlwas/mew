@@ -1,0 +1,22 @@
+# combined gc stress: closures, nested maps, lists, strings, split, join.
+# designed to trigger many gc cycles and surface any use-after-free or leak.
+
+fn make_obj(i)
+    return {
+        "id":     i,
+        "name":   "item_" .. str(i),
+        "tags":   split("a,b,c," .. str(i), ","),
+        "nested": {"k1": i, "k2": i * 2}
+    }
+end
+
+objs = []
+for i = 1 to 3000 do push(objs, make_obj(i)) end
+
+checksum = 0
+for o in objs do
+    checksum = checksum + o.id + o.nested.k1 + o.nested.k2
+    checksum = checksum + len(join(o.tags, "-"))
+end
+print(len(objs))
+print(checksum)

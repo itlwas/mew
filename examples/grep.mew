@@ -1,0 +1,31 @@
+# minimal grep: print lines containing a substring.
+# usage: mew grep.mew PATTERN FILE [FILE...]
+# exits 0 if any match was found, 1 otherwise.
+
+a = args()
+if len(a) < 2 then error("usage: mew grep.mew PATTERN FILE [FILE...]") end
+
+pattern = a[0]
+matched = 0
+show_path = len(a) > 2
+
+for i = 1 to len(a) - 1 do
+    path = a[i]
+    ls = lines(path)
+    if ls == nil then
+        print("grep: cannot open " .. path)
+    else
+        for j = 0 to len(ls) - 1 do
+            if contains(ls[j], pattern) then
+                if show_path then
+                    print(format("%s:%d:%s", path, j + 1, ls[j]))
+                else
+                    print(ls[j])
+                end
+                matched = matched + 1
+            end
+        end
+    end
+end
+
+if matched > 0 then exit(0) else exit(1) end

@@ -1,0 +1,5 @@
+# write a library file, then load and use it
+write_file("tests_tmp_lib.mew", "fn greet(name) return \"hi \" .. name end\nGREETING = \"hello\"")
+load("tests_tmp_lib.mew")
+print(greet("mew"))
+print(GREETING)

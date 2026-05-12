@@ -1,0 +1,25 @@
+# the break statement must not leak out of a function call into a surrounding
+# loop in the caller. historically call_value saved g_ret but not g_break,
+# so a bare 'break' inside a function would break the caller's loop.
+fn stray_break()
+    break
+end
+
+count = 0
+for j = 1 to 5 do
+    stray_break()
+    count = count + 1
+end
+print(count)
+
+# matching sanity check: break still works when used properly inside a
+# function-local loop.
+fn inner_break()
+    total = 0
+    for i = 1 to 10 do
+        if i > 3 then break end
+        total = total + i
+    end
+    return total
+end
+print(inner_break())

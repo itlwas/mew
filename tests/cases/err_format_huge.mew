@@ -1,0 +1,8 @@
+# One %s with padding width 100000000 — 100 MB > 64 MB cap.
+# mew format width parser caps width at 100000, so we emulate by repeating
+# smaller calls. But the cap should be on bi_format output: use a fmt like
+# "%100000s" repeated N times via join, with N args "x" produced in parallel.
+# Alternative simplest: single format call with fmt "%s" and arg = pre-built
+# very long string via repeat. len goal > 64 MB.
+big = repeat("A", 70000000)
+print(len(format("%s", big)))

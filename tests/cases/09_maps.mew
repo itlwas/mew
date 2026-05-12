@@ -1,0 +1,15 @@
+m = {"a": 1, "b": 2, "c": 3}
+print(m["a"])
+print(m.b)
+print(m["missing"])
+print(has(m, "a"))
+print(has(m, "x"))
+m["d"] = 4
+m.e = 5
+print(len(m))
+# keys order is undefined; normalize via len
+ks = keys(m)
+print(len(ks))
+del(m, "a")
+print(has(m, "a"))
+print(len(m))

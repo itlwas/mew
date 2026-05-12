@@ -1,0 +1,15 @@
+i = 0
+sum = 0
+while i < 5 do
+    sum = sum + i
+    i = i + 1
+end
+print(sum)
+
+# break
+i = 0
+while true do
+    if i == 3 then break end
+    i = i + 1
+end
+print(i)

@@ -1,0 +1,7 @@
+fn rec(n)
+    if n <= 0 then return 0 end
+    inner = fn(a,b) return rec(n-1) - 1 end
+    sort([2,1], inner)
+    return 0
+end
+rec(200)

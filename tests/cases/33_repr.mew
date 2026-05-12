@@ -1,0 +1,8 @@
+# repr: quoted and escape-safe form of value
+print(repr("hello"))
+print(repr("line\nbreak"))
+print(repr("with \"quotes\""))
+print(repr([1, "a", true]))
+print(repr({"k": "v"}))
+print(repr(42))
+print(repr(nil))

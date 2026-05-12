@@ -1,0 +1,10 @@
+# normalise all text files to LF in the repo
+* text=auto eol=lf
+
+# binary
+*.png binary
+*.jpg binary
+
+# Windows batch files keep CRLF
+*.bat text eol=crlf
+*.cmd text eol=crlf

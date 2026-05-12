@@ -1,0 +1,6 @@
+m = {"b": 2, "a": 1, "c": 3}
+# keys and values are sorted for determinism
+print(keys(m))
+print(values(m))
+# for-in over map is sorted too
+for k in m do print(k) end

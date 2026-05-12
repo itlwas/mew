@@ -1,0 +1,45 @@
+# edge cases
+# empty collections
+print(len([]))
+print(len(""))
+print(len({}))
+print([] .. [])
+print("" .. "")
+
+# deeply nested access
+m = {"x": {"y": {"z": 42}}}
+print(m.x.y.z)
+m.x.y.z = 99
+print(m.x.y.z)
+
+# chained index
+a = [[1, 2], [3, 4]]
+print(a[1][0])
+a[0][1] = 99
+print(a)
+
+# closures capture by reference
+fn make()
+    v = [0]
+    return [
+        fn() return v[0] end,
+        fn() v[0] = v[0] + 1 end
+    ]
+end
+c = make()
+print(c[0]())
+c[1]()
+c[1]()
+print(c[0]())
+
+# calling a closure returned from a loop
+fns = []
+for i = 1 to 3 do
+    push(fns, fn() return i end)
+end
+# note: all capture the same i; after loop i == 3
+for f in fns do print(f()) end
+
+# unicode bytes pass through
+s = "αβγδ"
+print(len(s))

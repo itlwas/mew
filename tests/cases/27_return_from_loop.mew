@@ -1,0 +1,21 @@
+# return inside a loop inside a function should exit the function cleanly
+fn contains(lst, x)
+    for v in lst do
+        if v == x then return true end
+    end
+    return false
+end
+print(contains([1,2,3,4,5], 3))
+print(contains([1,2,3], 10))
+
+# nested loops, return should still escape both
+fn find_pair(xs, ys, target)
+    for a in xs do
+        for b in ys do
+            if a + b == target then return [a, b] end
+        end
+    end
+    return nil
+end
+print(find_pair([1,2,3], [10,20,30], 13))
+print(find_pair([1,2,3], [10,20,30], 999))

@@ -1,0 +1,10 @@
+print(true and false)
+print(true or false)
+print(not true)
+print(not nil)
+print(not 0)
+# short-circuit returns operand value
+print(0 or "x")
+print("a" and "b")
+print(nil or "fallback")
+print(false and "never")

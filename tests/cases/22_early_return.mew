@@ -1,0 +1,8 @@
+fn find_first(lst, p)
+    for x in lst do
+        if p(x) then return x end
+    end
+    return nil
+end
+print(find_first([1,2,3,4,5], fn(v) return v > 3 end))
+print(find_first([1,2,3], fn(v) return v > 100 end))

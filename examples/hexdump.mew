@@ -1,0 +1,36 @@
+# classic hex dump: read a file, print 16 bytes per line with offset and ASCII.
+# usage: mew hexdump.mew <file>
+
+a = args()
+if len(a) < 1 then error("usage: mew hexdump.mew <file>") end
+
+data = read_file(a[0])
+if data == nil then error("cannot read " .. a[0]) end
+
+n = len(data)
+i = 0
+while i < n do
+    # offset
+    write(format("%08x  ", i))
+    # hex bytes
+    j = 0
+    while j < 16 do
+        if i + j < n then
+            write(format("%02x ", ord(data[i + j])))
+        else
+            write("   ")
+        end
+        if j == 7 then write(" ") end
+        j = j + 1
+    end
+    # printable ascii
+    write(" |")
+    j = 0
+    while j < 16 and i + j < n do
+        c = ord(data[i + j])
+        if c >= 32 and c < 127 then write(chr(c)) else write(".") end
+        j = j + 1
+    end
+    write("|\n")
+    i = i + 16
+end

@@ -1,0 +1,15 @@
+# string literals are interned: equality still works by value,
+# and map lookups with literal keys hit the same bucket regardless of where
+# the literal appears in the source text.
+a = "hello"
+b = "hello"
+# value equality must hold
+assert(a == b, "same literal must compare equal")
+# map key lookup via different literal occurrences
+m = {"key": 42}
+print(m["key"])
+print(m.key)
+# even after concat (result is a fresh StrObj, not interned) equality by bytes works
+c = "hel" .. "lo"
+assert(a == c, "concatenated equals literal")
+print("ok")

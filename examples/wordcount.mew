@@ -1,0 +1,20 @@
+# count word frequencies in a text
+fn wordcount(text)
+    counts = {}
+    for tok in split(lower(text), " ") do
+        if len(tok) > 0 then
+            if has(counts, tok) then
+                counts[tok] = counts[tok] + 1
+            else
+                counts[tok] = 1
+            end
+        end
+    end
+    return counts
+end
+
+text = "the quick brown fox jumps over the lazy dog the end"
+c = wordcount(text)
+for k in keys(c) do
+    print(k .. ": " .. str(c[k]))
+end

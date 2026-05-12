@@ -1,0 +1,15 @@
+print(pow(2, 10))
+print(sqrt(16))
+print(sqrt(2) > 1.4 and sqrt(2) < 1.5)
+# rand is non-deterministic, just check types and bounds
+seed(42)
+r = rand(100)
+print(type(r))
+print(r >= 0 and r < 100)
+# reseed and verify determinism
+seed(42)
+print(rand(100) == r)
+# rand() without args: float in [0, 1)
+seed(1)
+x = rand()
+print(x >= 0 and x < 1)

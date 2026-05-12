@@ -1,0 +1,25 @@
+# iterating a list should see a snapshot of its length: pushing during the
+# loop must not create an infinite iteration. the pre-iteration length is
+# the ceiling.
+xs = [1, 2, 3]
+n = 0
+for x in xs do
+    push(xs, x * 10)
+    n = n + 1
+end
+print(n)                # 3: we only see the initial three elements
+print(len(xs))          # 6: three new appended
+
+# popping inside the loop still stops early when the tail is removed.
+ys = [1, 2, 3, 4, 5]
+visited = 0
+for y in ys do
+    visited = visited + 1
+    if visited == 2 then
+        pop(ys)
+        pop(ys)
+    end
+end
+# visited items: 1, 2 (then pops remove 5 and 4, leaving [1, 2, 3]); then
+# iteration would want index 2, but len is now 3, so we still see 3.
+print(visited)

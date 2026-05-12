@@ -1,0 +1,5 @@
+fn sum_to(n)
+    if n == 0 then return 0 end
+    return n + sum_to(n - 1)
+end
+print(sum_to(200))

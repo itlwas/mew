@@ -1,0 +1,22 @@
+# deeply nested lists used to recurse through mark_list during gc and
+# overflow the c stack. gc marking now uses an explicit work stack so
+# any reasonable depth terminates without touching the c stack beyond
+# mark_push calls.
+l = []
+cur = l
+for i = 1 to 5000 do
+    inner = []
+    push(cur, inner)
+    cur = inner
+end
+print(len(l))
+
+# same story for maps: a chain of nested maps must not overflow gc.
+m = {}
+cur = m
+for i = 1 to 5000 do
+    inner = {}
+    cur["next"] = inner
+    cur = inner
+end
+print(len(m))

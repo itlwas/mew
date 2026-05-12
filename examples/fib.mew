@@ -1,0 +1,24 @@
+# a small benchmark: recursive fib plus hot arithmetic loop.
+# clock() returns cpu seconds; wall-clock may differ slightly.
+
+fn fib(n)
+    if n < 2 then return n end
+    return fib(n-1) + fib(n-2)
+end
+
+t = clock()
+print(format("fib(28)  = %d   in %.3f sec", fib(28), clock() - t))
+
+t = clock()
+s = 0
+i = 1
+while i <= 1000000 do
+    s = s + i
+    i = i + 1
+end
+print(format("sum 1..1e6 = %d   in %.3f sec", s, clock() - t))
+
+t = clock()
+s = ""
+for j = 1 to 10000 do s = s .. "x" end
+print(format("concat x10000   len %d   in %.3f sec", len(s), clock() - t))

@@ -1,0 +1,15 @@
+# regression: decimal parsing and float printing must use '.' regardless
+# of host locale. main() calls setlocale(LC_NUMERIC, "C") so that a host
+# environment with ru_RU / de_DE / etc locale does not break strtod and
+# format_num at the lexer and printer.
+print(3.14)
+print(str(2.5))
+print(num("1.5") + num("0.5"))
+
+# large numbers round-trip through %g
+x = 1.23456789e10
+print(x)
+
+# map formatting must use '.' inside numbers
+m = {"pi": 3.14159}
+print(m.pi)

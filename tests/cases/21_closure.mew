@@ -1,0 +1,8 @@
+fn adder(n)
+    return fn(x) return x + n end
+end
+add3 = adder(3)
+add10 = adder(10)
+print(add3(5))
+print(add10(5))
+print(add3(add10(1)))

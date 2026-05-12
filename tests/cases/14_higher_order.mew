@@ -1,0 +1,26 @@
+fn map_list(lst, f)
+    r = []
+    for x in lst do push(r, f(x)) end
+    return r
+end
+fn filter_list(lst, p)
+    r = []
+    for x in lst do
+        if p(x) then push(r, x) end
+    end
+    return r
+end
+fn reduce_list(lst, init, f)
+    acc = init
+    for x in lst do acc = f(acc, x) end
+    return acc
+end
+
+doubled = map_list([1,2,3,4], fn(x) return x*2 end)
+print(doubled)
+
+evens = filter_list([1,2,3,4,5,6], fn(x) return x % 2 == 0 end)
+print(evens)
+
+total = reduce_list([1,2,3,4,5], 0, fn(a,b) return a+b end)
+print(total)

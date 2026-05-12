@@ -1,0 +1,47 @@
+# tiny todo list in a flat file; demonstrates cli args, io, and list ops.
+# usage:
+#   mew todo.mew list
+#   mew todo.mew add Buy milk
+#   mew todo.mew done 2
+
+PATH = "todo.txt"
+
+fn load_tasks()
+    t = lines(PATH)
+    if t == nil then return [] end
+    return t
+end
+
+fn save_tasks(t) write_file(PATH, join(t, "\n")) end
+
+fn remove_at(list, i)
+    out = []
+    for k = 0 to len(list) - 1 do
+        if k != i then push(out, list[k]) end
+    end
+    return out
+end
+
+a = args()
+tasks = load_tasks()
+
+if len(a) == 0 or a[0] == "list" then
+    if len(tasks) == 0 then print("(empty)") end
+    for i = 0 to len(tasks) - 1 do print(format("%2d. %s", i + 1, tasks[i])) end
+else
+    if a[0] == "add" and len(a) >= 2 then
+        text = join(slice(a, 1, len(a)), " ")
+        push(tasks, text)
+        save_tasks(tasks)
+        print("added: " .. text)
+    else
+        if a[0] == "done" and len(a) == 2 then
+            i = num(a[1])
+            if i == nil or i < 1 or i > len(tasks) then error("bad task number: " .. a[1]) end
+            print("done: " .. tasks[i - 1])
+            save_tasks(remove_at(tasks, i - 1))
+        else
+            print("usage: mew todo.mew [list | add TEXT | done N]")
+        end
+    end
+end

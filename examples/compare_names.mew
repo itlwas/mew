@@ -1,0 +1,12 @@
+# compare two filenames ignoring case
+fn same_name(a, b)
+    return lower(a) == lower(b)
+end
+
+a = "Report.Final.PDF"
+b = "report.final.pdf"
+if same_name(a, b) then
+    print(a .. " and " .. b .. " are the same name")
+else
+    print("different names")
+end

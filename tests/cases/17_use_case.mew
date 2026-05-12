@@ -1,0 +1,6 @@
+# the canonical motivating example: compare two filenames
+fn same_name(a, b)
+    return lower(a) == lower(b)
+end
+print(same_name("File.TXT", "file.txt"))
+print(same_name("a.log", "b.log"))

@@ -1,0 +1,22 @@
+fact = 1
+for i = 1 to 5 do
+    fact = fact * i
+end
+print(fact)
+
+# when from > to, the loop body does not execute
+n = 0
+for i = 3 to 1 do n = n + 1 end
+print(n)
+
+# single point: 0 to 0 runs exactly once
+for i = 0 to 0 do
+    print("once")
+end
+
+# descending iteration uses while, there is no reverse for-to
+i = 3
+while i >= 1 do
+    print(i)
+    i = i - 1
+end

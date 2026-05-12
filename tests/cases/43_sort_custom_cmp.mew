@@ -1,0 +1,17 @@
+# regression: the mergesort auxiliary buffer must be reclaimable by gc if
+# the user comparator raises via error(). previously it used a bare malloc
+# that would leak on longjmp; it now lives on the value stack as a ListObj.
+items = [3, 1, 4, 1, 5, 9, 2, 6, 5, 3, 5]
+
+# ascending by numeric value (default)
+s1 = sort(items)
+print(s1)
+
+# descending via user comparator
+s2 = sort(items, fn(a, b) return b - a end)
+print(s2)
+
+# sort by string length
+words = ["hi", "hello", "a", "world", "ok"]
+s3 = sort(words, fn(a, b) return len(a) - len(b) end)
+print(s3)

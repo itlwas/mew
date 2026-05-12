@@ -1,0 +1,14 @@
+print(sort([3, 1, 4, 1, 5, 9, 2, 6]))
+print(sort(["banana", "apple", "cherry"]))
+# custom comparator: descending
+print(sort([3, 1, 4, 1, 5], fn(a, b) return b - a end))
+# sort by field
+people = [{"n":"c","age":30}, {"n":"a","age":10}, {"n":"b","age":20}]
+s = sort(people, fn(a, b) return a.age - b.age end)
+for p in s do print(p.n) end
+
+# sort does not mutate its input
+orig = [3, 1, 2]
+sorted_copy = sort(orig)
+print(orig)          # still [3, 1, 2]
+print(sorted_copy)   # [1, 2, 3]

@@ -1,0 +1,21 @@
+# nested data structures
+m = {"user": {"name": "mew", "age": 3}, "tags": ["cute", "tiny"]}
+print(m.user.name)
+print(m["user"]["age"])
+print(m.tags[0])
+m.user.age = 4
+print(m.user.age)
+push(m.tags, "cozy")
+print(m.tags)
+
+# list of maps
+people = [
+    {"n": "a", "age": 10},
+    {"n": "b", "age": 20},
+    {"n": "c", "age": 30}
+]
+total = 0
+for p in people do
+    total = total + p.age
+end
+print(total)

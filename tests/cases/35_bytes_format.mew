@@ -1,0 +1,19 @@
+# chr / ord round-trip
+print(chr(65))
+print(chr(97))
+print(ord("A"))
+print(ord("z"))
+# round-trip across all byte values
+for i = 0 to 255 do
+    if ord(chr(i)) != i then error("chr/ord mismatch at " .. str(i)) end
+end
+print("ok")
+
+# format specifiers
+print(format("%s is %d years old", "mew", 3))
+print(format("hex: %x", 255))
+print(format("[%5d]", 42))
+print(format("[%-5d]", 42))
+print(format("[%05d]", 42))
+print(format("%.2f", 3.14159))   # width unused, %f uses %g fallback
+print(format("100%% done"))

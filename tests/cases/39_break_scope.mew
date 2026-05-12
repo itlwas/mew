@@ -1,0 +1,18 @@
+# break must not leak out of a function call.
+# historically if a function body ended with a stray break, the caller
+# loop would treat it as if the loop itself was broken. this verifies
+# the break flag is scoped to the enclosing loop inside the callee.
+fn bad()
+    # try to smuggle break out: if call_value did not save g_break,
+    # the outer loop would exit after calling bad once.
+    for i = 1 to 3 do
+        if i == 2 then break end
+    end
+end
+
+count = 0
+for j = 1 to 5 do
+    bad()
+    count = count + 1
+end
+print(count)

@@ -1,0 +1,33 @@
+fn add(a, b)
+    return a + b
+end
+print(add(3, 4))
+
+fn fib(n)
+    if n < 2 then return n end
+    return fib(n-1) + fib(n-2)
+end
+print(fib(10))
+
+# anonymous
+square = fn(x) return x * x end
+print(square(7))
+
+# closure
+fn make_counter()
+    c = 0
+    return fn()
+        c = c + 1
+        return c
+    end
+end
+counter = make_counter()
+print(counter())
+print(counter())
+print(counter())
+
+# no explicit return
+fn greet(name)
+    print("hi " .. name)
+end
+greet("mew")

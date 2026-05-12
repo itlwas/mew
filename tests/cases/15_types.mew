@@ -1,0 +1,8 @@
+print(type(nil))
+print(type(true))
+print(type(42))
+print(type(3.5))
+print(type("hi"))
+print(type([1,2]))
+print(type({"a":1}))
+print(type(fn() return 1 end))

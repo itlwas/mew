@@ -1,0 +1,18 @@
+# verify the parser depth limit doesn't reject normal code: 64 levels of
+# nested parens is easily fine, 256 is the hard cap. this catches
+# regressions where the counter might not be reset between parses.
+x = ((((((((((1 + 2))))))))))
+print(x)
+
+# many small functions in a row, each calling another: checks that
+# counter resets between statements.
+fn f1() return 1 end
+fn f2() return f1() + 1 end
+fn f3() return f2() + 1 end
+fn f4() return f3() + 1 end
+fn f5() return f4() + 1 end
+print(f5())
+
+# deeply nested maps inside lists (alternating): ok up to the cap
+x = [{"a": [{"b": [{"c": 42}]}]}]
+print(x[0]["a"][0]["b"][0]["c"])

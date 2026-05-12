@@ -1,0 +1,4 @@
+path = "tests/tmp_file_io.txt"
+write_file(path, "hello\nworld\nmew")
+print(read_file(path))
+print(lines(path))

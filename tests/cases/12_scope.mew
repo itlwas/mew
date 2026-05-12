@@ -1,0 +1,30 @@
+# functions create scope; blocks do not
+x = 1
+fn f()
+    # reads global x
+    return x
+end
+print(f())
+
+# inner shadows? no, assignment walks up and finds global
+fn g()
+    x = 2
+    return x
+end
+print(g())
+print(x)   # global should now be 2 because g reassigned
+
+# but parameters are local to the function
+fn h(x)
+    x = x + 100
+    return x
+end
+print(h(10))
+print(x)   # still 2
+
+# if/while do not create scope
+y = 1
+if true then
+    y = 5
+end
+print(y)
