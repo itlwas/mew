@@ -691,7 +691,12 @@ static Value bi_ord(int argc, Value *argv) {
 }
 
 /* format: %s, %d, %x, %f with optional width, '-' left align, '0' pad,
- * and %.N precision for %f. */
+ * and %.N precision for %f.
+ *
+ * the body runs inside a local error sandbox so that any die() raised
+ * for a malformed specifier or oversized output unwinds through us. we
+ * then sb_free(&out) before re-raising. without this, every format()
+ * error leaked the StrBuf payload (audit F-103). */
 static Value bi_format(int argc, Value *argv) {
     NEED_GE(1);
     StrObj *fmt = as_str(argv[0], "format");
@@ -699,6 +704,19 @@ static Value bi_format(int argc, Value *argv) {
     int ai = 1;
     const char *p = fmt->data;
     const char *e = p + fmt->len;
+
+    jmp_buf prev; int prev_set = g_err_jmp_set;
+    memcpy(&prev, &g_err_jmp, sizeof(prev));
+    g_err_jmp_set = 1;
+    /* volatile required by C99 7.13.2.1: these locals are written between
+     * setjmp and longjmp and must survive the unwind. */
+    volatile int      v_failed = 0;
+    char  * volatile  v_heap   = NULL;
+    if (setjmp(g_err_jmp) != 0) {
+        v_failed = 1;
+        goto unwind;
+    }
+
     while (p < e) {
         if (*p != '%') { sb_putc(&out, *p++); continue; }
         p++;
@@ -750,9 +768,10 @@ static Value bi_format(int argc, Value *argv) {
                 /* spill onto the heap for edge cases like %.100f of 1e300 */
                 size_t hsz = (size_t)need + 1;
                 heap_buf = (char *)xmalloc(hsz);
+                v_heap   = heap_buf;
                 if (precision >= 0) slen = snprintf(heap_buf, hsz, "%.*f", precision, v.as.n);
                 else                slen = snprintf(heap_buf, hsz, "%g", v.as.n);
-                if (slen < 0 || slen >= (int)hsz) { free(heap_buf); die("format: %%f encoding failed"); }
+                if (slen < 0 || slen >= (int)hsz) die("format: %%f encoding failed");
                 src = heap_buf;
             }
         } else die("format: unknown specifier '%%%c'", spec);
@@ -779,6 +798,7 @@ static Value bi_format(int argc, Value *argv) {
             }
         }
         if (heap_buf) free(heap_buf);
+        v_heap = NULL;
         if (owned) {
             /* owned StrObj was created via str_new; it is in the gc chain but
              * unreferenced. nothing here triggers gc, yet we keep the pointer
@@ -788,11 +808,30 @@ static Value bi_format(int argc, Value *argv) {
         /* overall output cap: refuse to produce a >64 MB result no matter
          * how the specifiers combine. prevents memory exhaustion DoS from a
          * malicious script that multiplies many wide specifiers together. */
-        if (out.len > (1 << 26)) { sb_free(&out); die("format: output too large (>64 MB)"); }
+        if (out.len > (1 << 26)) die("format: output too large (>64 MB)");
     }
     StrObj *r = str_new(out.data ? out.data : "", out.len);
     sb_free(&out);
+    g_err_jmp_set = prev_set;
+    memcpy(&g_err_jmp, &prev, sizeof(prev));
     return v_obj((Object *)r);
+
+unwind:
+    /* error path: the StrBuf and a possibly-live heap scratch buffer
+     * would otherwise leak through the longjmp. release both, restore the
+     * outer error handler, then re-raise the same message. saved_msg is
+     * required because vsnprintf into g_err_msg with g_err_msg as source
+     * would alias under C99. */
+    if (v_heap) free(v_heap);
+    sb_free(&out);
+    g_err_jmp_set = prev_set;
+    memcpy(&g_err_jmp, &prev, sizeof(prev));
+    if (v_failed) {
+        char saved_msg[sizeof(g_err_msg)];
+        memcpy(saved_msg, g_err_msg, sizeof(saved_msg));
+        die("%s", saved_msg);
+    }
+    return v_nil(); /* unreachable */
 }
 
 /* ---------- errors and modules -------------------------------------- */
@@ -832,12 +871,24 @@ static Value bi_load(int argc, Value *argv) {
     jmp_buf prev; int prev_set = g_err_jmp_set;
     memcpy(&prev, &g_err_jmp, sizeof(prev));
     g_err_jmp_set = 1;
+    /* track the pinned prog across setjmp so the error branch can
+     * unpin it. volatile per C99 7.13.2.1 to survive longjmp. */
+    Node * volatile pinned_prog = NULL;
     if (setjmp(g_err_jmp) == 0) {
         Node *prog = parse_program((const char *)src);
         ast_keep(prog);
         free((char *)src);
         src = NULL;
+        /* pin the loaded program while it executes; ast_sweep below
+         * runs while we are still inside the caller's exec_block, so
+         * the caller's pin (set by run_source or an outer load) keeps
+         * its tree, and our pin keeps ours. */
+        ast_pin_root(prog);
+        pinned_prog = prog;
         exec_block(prog, g_globals);
+        ast_unpin_root(prog);
+        pinned_prog = NULL;
+        ast_sweep();
         g_err_jmp_set = prev_set;
         memcpy(&g_err_jmp, &prev, sizeof(prev));
         g_src_name = prev_name;
@@ -846,8 +897,13 @@ static Value bi_load(int argc, Value *argv) {
     }
     /* error path: release resources that would otherwise leak and re-raise.
      * src is freed only if it still owns the buffer. */
+    if (pinned_prog) ast_unpin_root(pinned_prog);
     if (src) free((char *)src);
     if (g_parse_current) { free_node(g_parse_current); g_parse_current = NULL; }
+    /* normalise control flow state before re-raising so the outer handler
+     * cannot see leaked break/return flags from within a partly executed
+     * loaded script (audit F-102). */
+    g_break = 0; g_ret = 0;
     g_err_jmp_set = prev_set;
     memcpy(&g_err_jmp, &prev, sizeof(prev));
     g_src_name = prev_name;

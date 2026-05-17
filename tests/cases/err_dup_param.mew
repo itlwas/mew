@@ -1,0 +1,2 @@
+fn foo(a, b, a) return a end
+print(foo(1, 2, 3))

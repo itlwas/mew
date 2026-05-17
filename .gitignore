@@ -5,12 +5,12 @@ mew-*
 *.o
 *.obj
 *.exe
-*.out
 
 # test artifacts
 tests/tmp_*
 tests_tmp_*
 tmp.csv
+loadtest_inner.mew
 
 # editor
 .vscode/

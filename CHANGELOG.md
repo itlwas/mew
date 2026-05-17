@@ -1,5 +1,52 @@
 # Changelog
 
+## 1.0.10 - tenth audit pass: AST chain leak and format error leak
+
+Tenth audit. Two real memory-leak findings closed plus several
+small robustness wins.
+
+### Memory leaks closed
+- F-101: `g_ast_chain` accumulated linearly. Every successful
+  `run_source` (each REPL line) and every successful `bi_load`
+  appended a tree of Node-objects that nothing released. After
+  1000 REPL lines or 1000 `load()` calls the residual heap was
+  measured in megabytes. Fix: a new `ast_sweep()` is called from
+  `run_source` and `bi_load` between top-level evaluations. It
+  walks every live FnObj in the gc chain, marks the body subtree
+  of each one, then releases AstChain entries whose roots have
+  no marked node. Currently-executing programs are protected by
+  an explicit pin stack (`ast_pin_root`/`ast_unpin_root`) that
+  the sweeper treats as live regardless of FnObj reachability.
+  Regression test 50_load_no_leak runs `load()` 500 times.
+
+- F-103: `bi_format` leaked its StrBuf payload on every error
+  raised inside the format-string parser (unknown specifier,
+  truncated, precision too large, etc). 9 of the 10 die() sites
+  did not call `sb_free(&out)` first. Fix: wrap the function
+  body in a local error sandbox; on longjmp release `out` and
+  any heap scratch buffer, then re-raise. Regression test
+  err_format_unknown anchors the path.
+
+### Robustness
+- F-108: linear AST chain limit (`CHAIN_MAX`) lowered from 1024
+  to 512 for symmetry with `CALL_DEPTH_MAX`. Eval of 512 stacked
+  N_BINOP nodes uses ~425 KB of stack, comfortably below the
+  default Windows 1 MB.
+- F-106: duplicate parameter names in `fn(a, b, a)` are now a
+  parse error (`fn: duplicate parameter name 'a'`) instead of
+  silently overwriting at call time. Regression err_dup_param.
+- F-110/F-111: `g_alloc_bytes` is incremented by the *delta*
+  when env or map containers grow, not by the full new size.
+  Avoids stale gc thresholds and over-eager collection.
+- F-102: `bi_load` now resets `g_break` and `g_ret` on its
+  error re-raise so a partly executed loaded script cannot leak
+  break/return state into the caller's surrounding loop.
+
+### Tests
+- 69 unit (up from 66), 6 repl, 9 smoke = 84 green.
+- Fuzz harness: 14562 mutation runs in 90 sec, 0 crashes.
+- gcc 15.2 -fanalyzer on all 5 files: 0 warnings.
+
 ## 1.0.9 - ninth audit pass: stack exhaustion via linear AST
 
 Ninth audit. Surfaced a DoS angle that six audits had walked past:

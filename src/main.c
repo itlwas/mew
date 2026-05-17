@@ -62,6 +62,10 @@ static void repl(void) {
              * with "value stack overflow". */
             g_break = 0; g_ret = 0; g_call_depth = 0;
             g_vsp = 0;
+            /* reset pinned AST roots: longjmp out of run_source/bi_load
+             * skipped their ast_unpin_root, so the next ast_sweep would
+             * hold orphan pins forever. */
+            ast_pin_reset();
             /* release partial ast if parsing was interrupted by a syntax
              * error (reserved slot published by parse_program). */
             if (g_parse_current) { free_node(g_parse_current); g_parse_current = NULL; }

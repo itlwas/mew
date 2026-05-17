@@ -24,7 +24,7 @@
 #  include <time.h>            /* nanosleep */
 #endif
 
-#define MEW_VERSION    "1.0"
+#define MEW_VERSION    "1.0.10"
 #define VSTACK_MAX     4096    /* max temporaries protected from gc */
 #define CALL_DEPTH_MAX 512     /* max recursion depth */
 #define INTERN_INITIAL 256
@@ -129,6 +129,7 @@ struct Node {
     int      n;
     Node   **kids;
     StrObj **keys;   /* map keys, or fn params (count in op for N_FN) */
+    int      ast_mark; /* gc transient: 1 if reachable from a live FnObj.body */
 };
 
 typedef struct AstChain AstChain;
@@ -197,6 +198,10 @@ void  vrestore(int s);
 void *gc_new(size_t sz, ObjTag tag);
 void  gc_collect(void);
 void  gc_maybe(void);
+void  ast_sweep(void);
+void  ast_pin_root(Node *root);
+void  ast_unpin_root(Node *root);
+void  ast_pin_reset(void);
 
 void  mark_value(Value v);
 void  mark_obj(Object *o);

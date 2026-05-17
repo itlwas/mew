@@ -124,7 +124,7 @@ def run_smoke():
     return fail
 
 def cleanup():
-    for pat in ("todo.txt", "tmp.csv", "tests_tmp_*", "tests/tmp_*"):
+    for pat in ("todo.txt", "tmp.csv", "tests_tmp_*", "tests/tmp_*", "loadtest_inner.mew"):
         for p in glob.glob(str(ROOT / pat)):
             try: os.remove(p)
             except OSError: pass

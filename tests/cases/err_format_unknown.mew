@@ -1,0 +1,4 @@
+# regression for audit F-103: bi_format must release its StrBuf when
+# raising on a malformed specifier. without the fix the heap-allocated
+# scratch buffer leaked through longjmp on every format() error.
+print(format("xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx%z", 1))

@@ -248,10 +248,11 @@ void ast_keep(Node *root) {
  * (a+b+c+..., a.b.c.d..., f(x)(y)(z)...). an otherwise valid but
  * pathological input with tens of thousands of terms would build a
  * linear AST that the tree-walking evaluator then recurses through
- * one node at a time, blowing the C stack. 1024 is generous for any
- * real program yet small enough that the 832-byte eval_node frame
- * stays comfortably under a 1 MB default stack on Windows. */
-#define CHAIN_MAX 1024
+ * one node at a time, blowing the C stack. 512 matches CALL_DEPTH_MAX
+ * and gives a comfortable margin under a default Windows 1 MB stack
+ * (eval frame ~830 bytes -> 425 KB worst case) while still rejecting
+ * adversarial input early (audit F-108). */
+#define CHAIN_MAX 512
 static int g_parse_depth = 0;
 
 static Node *parse_expr(Lexer *L);
@@ -267,6 +268,11 @@ static Node *parse_fn_body(Lexer *L, int line) {
             StrObj *p = L->cur.str;
             lex_advance(L);
             if (fn->n >= 1024) die("fn: too many parameters (max 1024)");
+            /* reject duplicate parameter names: previously fn(a, a) was
+             * silently accepted and the env_define on call would just
+             * overwrite the first binding, masking a typo. (audit F-106) */
+            for (int i = 0; i < fn->n; i++)
+                if (fn->keys[i] == p) die("fn: duplicate parameter name '%s'", p->data);
             fn->keys = (StrObj **)xrealloc(fn->keys, sizeof(StrObj *) * (size_t)(fn->n + 1));
             fn->keys[fn->n++] = p;
             if (!lex_match(L, T_COMMA)) break;

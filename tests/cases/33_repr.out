@@ -1,0 +1,7 @@
+"hello"
+"line\nbreak"
+"with \"quotes\""
+[1, "a", true]
+{"k": "v"}
+42
+nil

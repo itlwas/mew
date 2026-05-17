@@ -1,0 +1,12 @@
+# regression for audit F-101: g_ast_chain used to grow linearly.
+# Each successful load() appended an AstChain entry plus the entire
+# Node* tree of the loaded file, with no path to release them.
+# After the fix, ast_sweep runs after every top-level evaluation and
+# reclaims trees whose nodes no live FnObj.body points into.
+write_file("loadtest_inner.mew", "x = 1\ny = 2\nz = x + y")
+i = 0
+while i < 500 do
+    load("loadtest_inner.mew")
+    i = i + 1
+end
+print(i)

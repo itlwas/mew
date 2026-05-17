@@ -257,6 +257,23 @@ void mark_ast(Node *root) {
     }
 }
 
+/* iterative dfs that returns 1 if any node in the subtree has ast_mark
+ * set. used during gc to decide whether an AstChain root is still
+ * reachable from a live FnObj.body (which the evaluator pinned by
+ * setting ast_mark on the body node before mark-pass). */
+static int ast_subtree_has_mark(Node *root) {
+    if (!root) return 0;
+    g_ast_top = 0;
+    ast_push(root);
+    while (g_ast_top > 0) {
+        Node *n = g_ast_stack[--g_ast_top];
+        if (n->ast_mark) { g_ast_top = 0; return 1; }
+        ast_push(n->a); ast_push(n->b); ast_push(n->c);
+        for (int i = 0; i < n->n; i++) ast_push(n->kids[i]);
+    }
+    return 0;
+}
+
 static void free_obj(Object *o) {
     switch (o->tag) {
         case O_STR:  free(((StrObj *)o)->data);    break;
@@ -311,6 +328,98 @@ void gc_collect(void) {
     }
     g_alloc_bytes = 0;
     if (g_gc_threshold < (1u << 24)) g_gc_threshold *= 2;
+}
+
+/* AST sweep: drop AstChain entries whose subtree no live FnObj.body
+ * points into. only safe to call from a quiescent point (between
+ * top-level evaluations), never from inside exec_block, because
+ * eval_node may hold transient pointers into the AST that are not
+ * visible through any reachable FnObj.
+ *
+ * we walk all live FnObj in g_objects and ast_mark every reachable
+ * node from each f->body subtree. then we sweep g_ast_chain: trees
+ * with at least one ast_mark stay; the rest are freed. cleanup
+ * clears all marks before returning. without this sweep every
+ * successful run_source / bi_load leaks the full Node* tree
+ * (audit F-101).
+ *
+ * roots that are *currently being executed* must not be freed: the
+ * caller pins them by pushing onto g_ast_pin_stack via
+ * ast_pin_root / ast_unpin_root. the sweeper treats those as live
+ * regardless of FnObj reachability. */
+static Node **g_ast_pin_stack = NULL;
+static int    g_ast_pin_cap   = 0;
+static int    g_ast_pin_top   = 0;
+
+void ast_pin_root(Node *root) {
+    if (g_ast_pin_top >= g_ast_pin_cap) {
+        int nc = g_ast_pin_cap ? g_ast_pin_cap * 2 : 16;
+        g_ast_pin_stack = (Node **)xrealloc(g_ast_pin_stack, sizeof(Node *) * (size_t)nc);
+        g_ast_pin_cap = nc;
+    }
+    g_ast_pin_stack[g_ast_pin_top++] = root;
+}
+void ast_unpin_root(Node *root) {
+    /* expected to match the most recent pin; defensive: scan to find */
+    for (int i = g_ast_pin_top - 1; i >= 0; i--) {
+        if (g_ast_pin_stack[i] == root) {
+            for (int j = i; j < g_ast_pin_top - 1; j++)
+                g_ast_pin_stack[j] = g_ast_pin_stack[j + 1];
+            g_ast_pin_top--;
+            return;
+        }
+    }
+}
+void ast_pin_reset(void) { g_ast_pin_top = 0; }
+
+static void ast_mark_subtree(Node *root) {
+    if (!root) return;
+    g_ast_top = 0;
+    ast_push(root);
+    while (g_ast_top > 0) {
+        Node *n = g_ast_stack[--g_ast_top];
+        n->ast_mark = 1;
+        ast_push(n->a); ast_push(n->b); ast_push(n->c);
+        for (int i = 0; i < n->n; i++) ast_push(n->kids[i]);
+    }
+}
+static void ast_clear_subtree(Node *root) {
+    if (!root) return;
+    g_ast_top = 0;
+    ast_push(root);
+    while (g_ast_top > 0) {
+        Node *n = g_ast_stack[--g_ast_top];
+        n->ast_mark = 0;
+        ast_push(n->a); ast_push(n->b); ast_push(n->c);
+        for (int i = 0; i < n->n; i++) ast_push(n->kids[i]);
+    }
+}
+
+void ast_sweep(void) {
+    /* mark all subtrees reachable from any live (non-builtin) FnObj */
+    for (Object *o = g_objects; o; o = o->next) {
+        if (o->tag != O_FN) continue;
+        FnObj *f = (FnObj *)o;
+        if (f->is_builtin) continue;
+        if (f->body) ast_mark_subtree(f->body);
+    }
+    /* mark every pinned root: these are currently being executed and
+     * must survive the sweep regardless of FnObj reachability */
+    for (int i = 0; i < g_ast_pin_top; i++)
+        ast_mark_subtree(g_ast_pin_stack[i]);
+    /* drop AstChain entries whose root has no marked descendants */
+    AstChain **ap = &g_ast_chain;
+    while (*ap) {
+        AstChain *c = *ap;
+        if (ast_subtree_has_mark(c->root)) {
+            ast_clear_subtree(c->root);
+            ap = &c->next;
+        } else {
+            *ap = c->next;
+            free_node(c->root);
+            free(c);
+        }
+    }
 }
 
 void gc_maybe(void) { if (g_alloc_bytes > g_gc_threshold) gc_collect(); }
@@ -472,8 +581,10 @@ static void map_resize(MapObj *m, int ncap) {
     }
     free(m->buckets);
     m->buckets = nb;
+    /* delta accounting (audit F-110): only count the new bytes, not the
+     * full new table, otherwise resize triggers gc trigger too early. */
+    g_alloc_bytes += sizeof(MapEntry) * (size_t)(ncap - m->cap);
     m->cap = ncap;
-    g_alloc_bytes += sizeof(MapEntry) * (size_t)ncap;
 }
 void map_set(MapObj *m, StrObj *k, Value val) {
     if (m->cap == 0) map_resize(m, 8);
@@ -573,6 +684,8 @@ void env_define(Env *e, StrObj *name, Value v) {
         if (nc <= e->cap) die("env: capacity overflow");
         e->names = (StrObj **)xrealloc(e->names, sizeof(StrObj *) * (size_t)nc);
         e->vals  = (Value *)  xrealloc(e->vals,  sizeof(Value)    * (size_t)nc);
+        /* delta accounting so gc fires on real growth (audit F-111) */
+        g_alloc_bytes += (sizeof(StrObj *) + sizeof(Value)) * (size_t)(nc - e->cap);
         e->cap = nc;
     }
     e->names[e->len] = name;

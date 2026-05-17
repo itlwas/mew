@@ -394,9 +394,20 @@ Value call_value(Value fv, int argc, Value *argv) {
 void run_source(const char *src) {
     Node *prog = parse_program(src);
     ast_keep(prog);
+    /* pin while executing: bi_load called from inside this exec_block
+     * may sweep the AST chain; without the pin it would consider this
+     * top-level program unreachable (no FnObj points into a top-level
+     * block that contains no function literals) and free the tree we
+     * are still walking. */
+    ast_pin_root(prog);
     exec_block(prog, g_globals);
+    ast_unpin_root(prog);
     g_break = 0; g_ret = 0; g_call_depth = 0;
     g_vsp = 0; /* normal completion leaves an empty vstack; be explicit */
+    /* between top-level evaluations we can safely free AST trees that
+     * no live function body references. only safe here, never inside
+     * exec_block. closes audit F-101. */
+    ast_sweep();
 }
 
 int parse_needs_more(const char *src) {
