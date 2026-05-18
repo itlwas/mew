@@ -377,7 +377,15 @@ static Node *parse_postfix(Lexer *L) {
         int line = L->cur.line;
         if (lex_match(L, T_LB)) {
             if (++chain > CHAIN_MAX) die("parse: expression chain too long");
+            /* depth check (audit F-303): the inner parse_expr below recurses
+             * through parse_or .. parse_postfix, and parse_primary's own
+             * depth bookkeeping decrements before we re-enter the cycle.
+             * without this guard, an input like `1[1[1[...]]]` with
+             * thousands of nested indexings overflows the C stack at eval
+             * time without ever tripping the parser's depth limit. */
+            if (++g_parse_depth > PARSE_DEPTH_MAX) die("parse: nesting too deep (limit %d)", PARSE_DEPTH_MAX);
             Node *idx = parse_expr(L);
+            g_parse_depth--;
             lex_expect(L, T_RB, "']'");
             Node *n = node_new(N_INDEX, line);
             n->a = e; n->b = idx;
@@ -392,12 +400,17 @@ static Node *parse_postfix(Lexer *L) {
             e = n;
         } else if (lex_match(L, T_LP)) {
             if (++chain > CHAIN_MAX) die("parse: expression chain too long");
+            /* same guard as the T_LB branch: f(f(f(...))) with thousands of
+             * nested calls would otherwise crash the eval-time recursion
+             * (audit F-303). */
+            if (++g_parse_depth > PARSE_DEPTH_MAX) die("parse: nesting too deep (limit %d)", PARSE_DEPTH_MAX);
             Node *call = node_new(N_CALL, line);
             call->a = e;
             if (!lex_check(L, T_RP)) {
                 node_add_kid(call, parse_expr(L));
                 while (lex_match(L, T_COMMA)) node_add_kid(call, parse_expr(L));
             }
+            g_parse_depth--;
             lex_expect(L, T_RP, "')'");
             e = call;
         } else break;

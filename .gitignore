@@ -8,6 +8,8 @@ mew-*
 
 # test artifacts
 tests/tmp_*
+tests/tmp*_file_io.txt
+tests/tm*_file_io.txt
 tests_tmp_*
 tmp.csv
 loadtest_inner.mew
@@ -21,6 +23,7 @@ loadtes*_inner.me*
 tests_*p_lib.me*
 tests_t*p*lib.me*
 test_tmp_lib.me*
+test*s_tmp_lib.me*
 fuzz_in_*.mew
 
 # editor

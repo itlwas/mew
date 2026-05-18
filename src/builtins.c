@@ -824,6 +824,12 @@ static Value bi_format(int argc, Value *argv) {
     }
     StrObj *r = str_new(out.data ? out.data : "", out.len);
     sb_free(&out);
+    /* defensive: restore the value stack to the level we captured at entry
+     * so any future change that adds an unbalanced vpush in the loop body
+     * cannot leak gc roots into the caller. on the unwind path we already
+     * call vrestore; mirroring it here makes the contract symmetric
+     * (audit F-301). */
+    vrestore(v_base);
     g_err_jmp_set = prev_set;
     memcpy(&g_err_jmp, &prev, sizeof(prev));
     return v_obj((Object *)r);

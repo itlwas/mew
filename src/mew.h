@@ -24,7 +24,7 @@
 #  include <time.h>            /* nanosleep */
 #endif
 
-#define MEW_VERSION    "1.0.11"
+#define MEW_VERSION    "1.0.12"
 #define VSTACK_MAX     4096    /* max temporaries protected from gc */
 #define CALL_DEPTH_MAX 512     /* max recursion depth */
 #define INTERN_INITIAL 256

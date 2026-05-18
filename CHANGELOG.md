@@ -1,5 +1,35 @@
 # Changelog
 
+## 1.0.12 - twelfth audit pass: postfix-chain stack overflow
+
+Twelfth audit. One High-severity defect closed plus a defensive
+hygiene improvement.
+
+### Critical defence
+- F-303: `1[1[1[...]]]` or `f(f(f(...)))` with thousands of nested
+  postfix operators (index, call, dot) used to recurse through
+  parse_postfix -> parse_expr -> parse_postfix without ever
+  tripping PARSE_DEPTH_MAX, because parse_primary's depth
+  bookkeeping decrements before the cycle re-enters. Eval then
+  walked the same depth of N_INDEX / N_CALL nodes recursively and
+  blew the C stack: on Windows the process terminated silently
+  with STATUS_STACK_OVERFLOW (0xC00000FD), no diagnostic. The
+  parse_postfix loop now bumps g_parse_depth around every recurse
+  into parse_expr for `[`, `(`, so a malicious .mew is rejected
+  cleanly with `parse: nesting too deep`. Two regression tests
+  exercise both call and index nesting at 300 levels.
+
+### Hygiene
+- F-301: bi_format now mirrors its unwind-path vrestore with a
+  matching restore on the success return so the contract is
+  symmetric. defensive only, no current bug.
+
+### Tests
+- 73 unit (up from 71), 6 repl, 9 smoke = 88 green.
+- New: err_postfix_deep_index, err_postfix_deep_call.
+- Fuzz harness: 8907 mutation runs in 60 sec, 0 crashes.
+- gcc 15.2 -fanalyzer: 0 warnings.
+
 ## 1.0.11 - eleventh audit pass: control-flow rigour, hash flooding
 
 Eleventh audit. Two correctness defects in control-flow plus a
