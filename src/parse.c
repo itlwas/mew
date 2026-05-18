@@ -254,12 +254,28 @@ void ast_keep(Node *root) {
  * adversarial input early (audit F-108). */
 #define CHAIN_MAX 512
 static int g_parse_depth = 0;
+/* track nesting depth of enclosing constructs at parse time so we can
+ * reject `break` outside any loop and `return` outside any function with
+ * a clear syntax error rather than silently swallowing the rest of the
+ * containing block at runtime (audit F-205 / F-206). incremented at the
+ * start of parse_while/parse_for / parse_fn_body, decremented at exit
+ * including via the goto-style die path (which longjmps out, but parse
+ * always starts fresh in parse_program where these counters are reset). */
+static int g_loop_depth = 0;
+static int g_fn_depth   = 0;
 
 static Node *parse_expr(Lexer *L);
 static Node *parse_stmt(Lexer *L);
 
 static Node *parse_fn_body(Lexer *L, int line) {
     if (++g_parse_depth > PARSE_DEPTH_MAX) die("parse: nesting too deep (limit %d)", PARSE_DEPTH_MAX);
+    /* a function body has its own loop scope: a `break` inside the body
+     * cannot escape into the surrounding loop because call_value saves
+     * and restores g_break. saving the depth and resetting to 0 makes
+     * the parser's break-outside-loop check match this runtime behaviour. */
+    int saved_loop_depth = g_loop_depth;
+    g_loop_depth = 0;
+    g_fn_depth++;
     Node *fn = node_new(N_FN, line);
     lex_expect(L, T_LP, "'(' after fn");
     if (!lex_check(L, T_RP)) {
@@ -284,6 +300,8 @@ static Node *parse_fn_body(Lexer *L, int line) {
     while (!lex_check(L, T_END) && !lex_check(L, T_EOF)) node_add_kid(fn, parse_stmt(L));
     lex_expect(L, T_END, "'end'");
     g_parse_depth--;
+    g_fn_depth--;
+    g_loop_depth = saved_loop_depth;
     return fn;
 }
 
@@ -521,8 +539,10 @@ static Node *parse_while(Lexer *L) {
     Node *cond = parse_expr(L);
     lex_expect(L, T_DO, "'do'");
     Node *body = node_new(N_BLOCK, line);
+    g_loop_depth++;
     while (!lex_check(L, T_END) && !lex_check(L, T_EOF))
         node_add_kid(body, parse_stmt(L));
+    g_loop_depth--;
     lex_expect(L, T_END, "'end'");
     Node *n = node_new(N_WHILE, line);
     n->a = cond; n->b = body;
@@ -543,8 +563,10 @@ static Node *parse_for(Lexer *L) {
         Node *too = parse_expr(L);
         lex_expect(L, T_DO, "'do'");
         Node *body = node_new(N_BLOCK, line);
+        g_loop_depth++;
         while (!lex_check(L, T_END) && !lex_check(L, T_EOF))
             node_add_kid(body, parse_stmt(L));
+        g_loop_depth--;
         lex_expect(L, T_END, "'end'");
         Node *n = node_new(N_FOR_TO, line);
         n->v.s = name; n->a = from; n->b = too; n->c = body;
@@ -555,8 +577,10 @@ static Node *parse_for(Lexer *L) {
         Node *col = parse_expr(L);
         lex_expect(L, T_DO, "'do'");
         Node *body = node_new(N_BLOCK, line);
+        g_loop_depth++;
         while (!lex_check(L, T_END) && !lex_check(L, T_EOF))
             node_add_kid(body, parse_stmt(L));
+        g_loop_depth--;
         lex_expect(L, T_END, "'end'");
         Node *n = node_new(N_FOR_IN, line);
         n->v.s = name; n->a = col; n->b = body;
@@ -609,6 +633,11 @@ static Node *parse_assign_or_expr(Lexer *L) {
             free(lhs);
             return n;
         }
+        /* invalid target: free both half-built trees before raising so a
+         * REPL session that produces many syntax errors does not leak
+         * Node memory linearly. (audit F-213). */
+        free_node(lhs);
+        free_node(rhs);
         die("invalid assignment target");
     }
     Node *es = node_new(N_EXPR_STMT, line);
@@ -625,6 +654,10 @@ static Node *parse_stmt(Lexer *L) {
         case T_RETURN: {
             int line = L->cur.line;
             lex_advance(L);
+            /* a top-level `return` (g_fn_depth == 0) used to set g_ret = 1
+             * and silently swallow the rest of the program. now it is a
+             * parse-time error like in lua and python (audit F-206). */
+            if (g_fn_depth == 0) die("'return' outside of a function");
             Node *n = node_new(N_RETURN, line);
             switch (L->cur.kind) {
                 case T_END: case T_ELSE: case T_EOF: n->a = NULL; break;
@@ -635,6 +668,13 @@ static Node *parse_stmt(Lexer *L) {
         case T_BREAK: {
             int line = L->cur.line;
             lex_advance(L);
+            /* `break` outside any while/for used to set g_break = 1 and
+             * abandon the rest of the enclosing block silently. now it is
+             * a parse-time error so typos are caught up front (audit F-205).
+             * the check uses g_loop_depth which parse_fn_body resets to 0
+             * inside a function body, so a break inside a closure declared
+             * inside a loop still requires its own loop. */
+            if (g_loop_depth == 0) die("'break' outside of a loop");
             return node_new(N_BREAK, line);
         }
         default: return parse_assign_or_expr(L);
@@ -645,6 +685,8 @@ Node *parse_program(const char *src) {
     Lexer L;
     lex_init(&L, src);
     g_parse_depth = 0;
+    g_loop_depth  = 0;
+    g_fn_depth    = 0;
     /* publish the in-progress root so that a die() anywhere inside the
      * parser can still be cleaned up by the outermost error handler. on
      * success we clear it back to NULL. this avoids using setjmp here,

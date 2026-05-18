@@ -428,8 +428,17 @@ void gc_maybe(void) { if (g_alloc_bytes > g_gc_threshold) gc_collect(); }
  * strings and interning
  * ====================================================================== */
 
+/* per-process hash seed: defends against precomputed FNV-1a collisions
+ * being weaponised to flood map buckets with same-modulus keys, turning
+ * O(1) lookups into O(n^2) (audit F-204). seeded from time() at startup
+ * so identical scripts run-to-run still produce reproducible output for
+ * deterministic operations like sorted iteration; only the bucket layout
+ * varies between processes. */
+static uint32_t g_hash_seed = 0x811c9dc5u;
+void mew_hash_seed_init(uint32_t s) { g_hash_seed = s ? s : 0x811c9dc5u; }
+
 uint32_t str_hash(const char *s, int len) {
-    uint32_t h = 2166136261u;
+    uint32_t h = g_hash_seed;
     for (int i = 0; i < len; i++) { h ^= (unsigned char)s[i]; h *= 16777619u; }
     return h ? h : 1;
 }
@@ -765,11 +774,18 @@ static void format_num(StrBuf *b, double n) {
         long long ll = (long long)n;
         if (n == (double)ll && n > -1e18 && n < 1e18) {
             len = snprintf(buf, sizeof(buf), "%lld", ll);
+            /* defensive clamp: snprintf returning a negative value (encoding
+             * error) or >= sizeof(buf) (truncated) would have caused
+             * sb_putn to read out of bounds. neither is reachable with the
+             * format strings we use here, but cheaper to be sure. (audit
+             * F-201). */
+            if (len < 0 || len >= (int)sizeof(buf)) len = 0;
             sb_putn(b, buf, len);
             return;
         }
     }
     len = snprintf(buf, sizeof(buf), "%.14g", n);
+    if (len < 0 || len >= (int)sizeof(buf)) len = 0;
     sb_putn(b, buf, len);
 }
 

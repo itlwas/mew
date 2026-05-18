@@ -12,6 +12,17 @@ tests_tmp_*
 tmp.csv
 loadtest_inner.mew
 
+# fuzz / runtime mutation artifacts (random filenames written by mutated
+# scripts that called write_file with a corrupted path). these names are
+# noise that would otherwise pile up in the working tree across audits.
+loadtest_*.me*
+loaltest_*.me*
+loadtes*_inner.me*
+tests_*p_lib.me*
+tests_t*p*lib.me*
+test_tmp_lib.me*
+fuzz_in_*.mew
+
 # editor
 .vscode/
 .idea/

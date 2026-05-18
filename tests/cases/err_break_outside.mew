@@ -1,0 +1,5 @@
+# regression for audit F-205: a top-level break used to set g_break = 1
+# and silently swallow the rest of the program. now it is a parse error.
+print("before")
+break
+print("after")

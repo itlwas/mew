@@ -1,13 +1,20 @@
 # the break statement must not leak out of a function call into a surrounding
 # loop in the caller. historically call_value saved g_ret but not g_break,
-# so a bare 'break' inside a function would break the caller's loop.
-fn stray_break()
-    break
+# so a `break` inside a function-local loop could escape into the caller's
+# loop too. now g_break is also saved/restored so the function's own break
+# stays scoped to its own loop. (audit pass 2: a top-level `break` outside
+# any loop is now a parse error, so this test exercises a function-local
+# loop instead.)
+fn loops_then_returns()
+    for i = 1 to 1 do
+        break
+    end
+    return "inner exited cleanly"
 end
 
 count = 0
 for j = 1 to 5 do
-    stray_break()
+    print(loops_then_returns())
     count = count + 1
 end
 print(count)

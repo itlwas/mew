@@ -24,7 +24,7 @@
 #  include <time.h>            /* nanosleep */
 #endif
 
-#define MEW_VERSION    "1.0.10"
+#define MEW_VERSION    "1.0.11"
 #define VSTACK_MAX     4096    /* max temporaries protected from gc */
 #define CALL_DEPTH_MAX 512     /* max recursion depth */
 #define INTERN_INITIAL 256
@@ -209,6 +209,7 @@ void  mark_str(StrObj *s);
 void  mark_ast(Node *n);
 
 uint32_t str_hash(const char *s, int len);
+void     mew_hash_seed_init(uint32_t s);
 StrObj  *str_new(const char *s, int len);
 StrObj  *intern(const char *s, int len);
 StrObj  *intern_cstr(const char *s);

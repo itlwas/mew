@@ -1,5 +1,50 @@
 # Changelog
 
+## 1.0.11 - eleventh audit pass: control-flow rigour, hash flooding
+
+Eleventh audit. Two correctness defects in control-flow plus a
+small batch of low-severity hardening.
+
+### Correctness fixes
+- F-205: `break` outside any while/for used to silently set
+  g_break = 1 and abandon the rest of the enclosing block. it is
+  now a parse-time error matching how lua and python handle it.
+  caught at parse time via a static g_loop_depth counter that
+  parse_while/parse_for increment around the body and parse_fn_body
+  resets to 0 inside a function body.
+- F-206: `return` outside any function used to set g_ret = 1 and
+  silently swallow the rest of the program. it is now a parse-time
+  error tracked through g_fn_depth.
+- 40_break_isolation rewritten: it used to demonstrate the
+  silent-failure behaviour with `fn stray_break() break end` which
+  is now a parse error. the new version exercises the same
+  invariant (break stays scoped to its function) using a function-
+  local loop.
+
+### Hardening
+- F-204: str_hash now uses a per-process random seed so a malicious
+  script that places attacker-controlled data into map keys cannot
+  exploit FNV-1a determinism to engineer hash-flooding collisions
+  and turn O(1) map operations into O(n^2). seed is folded from
+  time(NULL) and an address-randomized stack pointer.
+- F-201: format_num clamps snprintf return values before passing
+  them to sb_putn so a libc reporting truncation could not push a
+  negative or oversized length into a copy.
+- F-213: parse_assign_or_expr now free_node()s both sides of the
+  attempted assignment before raising "invalid assignment target",
+  closing a 50-byte-per-error leak that accumulated in REPL
+  sessions with frequent syntax mistakes.
+- F-212: bi_format vpush/vpops the StrObj produced by value_to_str
+  for `%s` so a hypothetical future gc trigger inside sb_putn
+  cannot reclaim its data buffer mid-copy. unwind path uses
+  vrestore via a baseline g_vsp captured at entry.
+
+### Tests
+- 71 unit (up from 69), 6 repl, 9 smoke = 86 green.
+- New: err_break_outside, err_return_outside.
+- Fuzz harness: 10200 mutation runs in 60 sec, 0 crashes.
+- gcc 15.2 -fanalyzer on every source file: 0 warnings.
+
 ## 1.0.10 - tenth audit pass: AST chain leak and format error leak
 
 Tenth audit. Two real memory-leak findings closed plus several

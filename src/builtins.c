@@ -704,6 +704,9 @@ static Value bi_format(int argc, Value *argv) {
     int ai = 1;
     const char *p = fmt->data;
     const char *e = p + fmt->len;
+    /* baseline g_vsp so unwind can release any owned StrObj pushed by
+     * the spec='s' branch (audit F-212). */
+    int v_base = vsave();
 
     jmp_buf prev; int prev_set = g_err_jmp_set;
     memcpy(&prev, &g_err_jmp, sizeof(prev));
@@ -749,7 +752,16 @@ static Value bi_format(int argc, Value *argv) {
         int    slen;
         StrObj *owned   = NULL;
         if (spec == 's') {
-            owned = value_to_str(v); src = owned->data; slen = owned->len;
+            owned = value_to_str(v);
+            /* root owned on the value stack so a hypothetical future gc
+             * trigger inside sb_putn (e.g. if sb_need ever started calling
+             * gc_maybe) cannot reclaim its data buffer mid-copy.
+             * vsave/vrestore at function exit rebalances the stack on the
+             * normal path; the unwind handler restores g_vsp through the
+             * outer error frame's vsave. (audit F-212). */
+            vpush(v_obj((Object *)owned));
+            src = owned->data;
+            slen = owned->len;
         } else if (spec == 'd' || spec == 'x') {
             if (v.tag != V_NUM) die("format: %%%c expects number, got %s", spec, type_cname(v));
             long long n = safe_dtoll(v.as.n, spec == 'd' ? "format %d" : "format %x");
@@ -800,10 +812,10 @@ static Value bi_format(int argc, Value *argv) {
         if (heap_buf) free(heap_buf);
         v_heap = NULL;
         if (owned) {
-            /* owned StrObj was created via str_new; it is in the gc chain but
-             * unreferenced. nothing here triggers gc, yet we keep the pointer
-             * quiet for the compiler and make the ownership explicit. */
-            (void)owned;
+            /* paired with vpush after spec=='s'; release the gc root now
+             * that the bytes have been copied into out. */
+            vpop();
+            owned = NULL;
         }
         /* overall output cap: refuse to produce a >64 MB result no matter
          * how the specifiers combine. prevents memory exhaustion DoS from a
@@ -824,6 +836,7 @@ unwind:
      * would alias under C99. */
     if (v_heap) free(v_heap);
     sb_free(&out);
+    vrestore(v_base);
     g_err_jmp_set = prev_set;
     memcpy(&g_err_jmp, &prev, sizeof(prev));
     if (v_failed) {

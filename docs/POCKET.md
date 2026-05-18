@@ -49,6 +49,8 @@ break                        # exit the nearest loop
 ```
 Blocks do not create a scope, functions do. Assignment walks up the scope chain and writes to the binding found, or creates one in the current scope.
 
+`break` must appear inside a `while` or `for` loop. `return` must appear inside a function. Both are syntax errors otherwise.
+
 ## Truthiness
 Only `false` and `nil` are falsy. Everything else is truthy (including `0` and `""`).
 

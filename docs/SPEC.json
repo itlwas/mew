@@ -219,7 +219,8 @@
     "Map keys in literals must be string literals. For dynamic keys use m[k] assignment.",
     "Comments are '#' only, never '//' or '/* */'.",
     "No increment/decrement operators. Use 'i = i + 1'.",
-    "No ternary operator. Use 'if ... then ... else ... end' or 'cond and a or b'."
+    "No ternary operator. Use 'if ... then ... else ... end' or 'cond and a or b'.",
+    "'break' must be inside a while/for loop. 'return' must be inside a function. Both are syntax errors at the top level."
   ],
 
   "example_programs": [

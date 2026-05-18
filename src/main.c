@@ -101,6 +101,16 @@ int main(int argc, char **argv) {
      * both the lexer and format_num. this keeps mew portable. */
     setlocale(LC_NUMERIC, "C");
 
+    /* seed the hash function with a non-trivial per-process value before
+     * anything calls intern() (which is install_builtins below). without
+     * this, FNV-1a is fully predictable and a malicious script can build
+     * O(n^2) hash collisions in any map (audit F-204). */
+    {
+        uint32_t s = (uint32_t)time(NULL) ^ 0x9e3779b9u;
+        s ^= (uint32_t)(uintptr_t)&s;
+        mew_hash_seed_init(s);
+    }
+
     g_globals = env_new(NULL);
     install_builtins(g_globals);
     g_args_list = list_new();
