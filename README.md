@@ -24,6 +24,7 @@ if lower(a) == lower(b) then print("same name") end
 - [Tests](#tests)
 - [Design decisions](#design-decisions)
 - [Non goals](#non-goals)
+- [A personal note](#a-personal-note)
 - [License](#license)
 
 ## Why
@@ -286,6 +287,18 @@ Deliberate omissions, not oversights:
 - sockets and HTTP (out of scope for the base interpreter)
 
 Lua and Python exist for all of these. mew stays small on purpose.
+
+## A personal note
+
+I made mew because I wanted it. Half the time I need a script, all I am doing is comparing two filenames or counting words in a log, and pulling in Python just for that always felt heavy. Writing the same thing in C is worse. So this is the tool I wanted to have on hand.
+
+Two rules from the start. It should run on whatever machine you happen to be at, even the kind of hardware that makes you want to cry. And it should read exactly the way it runs. If you see a line, that is what happens. No magic, no clever desugaring, no surprise behaviour.
+
+The whole reference fits on one page on purpose. A small LLM, even a 1B model, can read it once and translate code from a bigger language into mew with no extra context. The smaller the spec, the higher the accuracy floor.
+
+Before you commit to anything, a fair warning. mew is not Python. There is no roadmap. I fix critical bugs when I feel like fixing them. The language grows by personal taste, not by feature request. I make no promises about backwards compatibility, release cadence, or anything else. If you want to build something serious on top of it, the license is MIT. Clone it, fork it, do what you want with it.
+
+If the language fits how you think, good. If not, Lua and Python are right there and they are good at what they do.
 
 ## License
 
