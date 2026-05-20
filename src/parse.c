@@ -140,6 +140,15 @@ static Tok lex_one(Lexer *L) {
 
 static void lex_init(Lexer *L, const char *src) {
     L->src = src; L->p = src; L->line = 1; L->has_peek = 0;
+    /* skip a leading UTF-8 BOM (EF BB BF) so files saved by editors that
+     * insert one (notepad, vs code with BOM enabled) parse cleanly. only
+     * the very first three bytes are skipped; an embedded BOM later in
+     * the file is still an unexpected-character error (audit F-413). */
+    if ((unsigned char)L->p[0] == 0xEF &&
+        (unsigned char)L->p[1] == 0xBB &&
+        (unsigned char)L->p[2] == 0xBF) {
+        L->p += 3;
+    }
     L->cur = lex_one(L);
 }
 static Tok lex_advance(Lexer *L) {

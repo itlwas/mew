@@ -1,5 +1,33 @@
 # Changelog
 
+## 1.0.13 - thirteenth audit pass: utf-8 bom and sort state hygiene
+
+Thirteenth audit. Two low-impact findings closed; no critical or
+high defects surfaced this round, which is the expected exhaustion
+curve after three deep audits.
+
+### Compatibility
+- F-413: a `.mew` file saved with a leading UTF-8 BOM (the three
+  bytes EF BB BF that some editors insert) used to fail with
+  `unexpected character '\xef'`. lex_init now skips an optional
+  leading BOM. only the very first three bytes are consumed; an
+  embedded BOM later in the file is still rejected. regression
+  test 51_utf8_bom anchors the path.
+
+### Hygiene
+- F-430: the REPL error handler now also resets the static
+  comparator state in builtins.c (g_sort_fn / g_sort_tmp) via a
+  new mew_sort_state_reset(). bi_sort already overrides these on
+  every entry so the stale pointer was never used as a UAF, but
+  leaving a dangling FnObj* in a global between sessions was an
+  architectural smell. closing it here makes the contract clean.
+
+### Tests
+- 74 unit (up from 73), 6 repl, 9 smoke = 89 green.
+- New: 51_utf8_bom.
+- Fuzz harness: 10511 mutation runs in 60 sec, 0 crashes, 0 hangs.
+- gcc 15.2 -fanalyzer on every source file: 0 warnings.
+
 ## 1.0.12 - twelfth audit pass: postfix-chain stack overflow
 
 Twelfth audit. One High-severity defect closed plus a defensive

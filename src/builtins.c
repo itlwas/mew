@@ -376,6 +376,13 @@ static Value bi_reverse(int argc, Value *argv) {
 static ListObj *g_sort_tmp = NULL;
 static FnObj   *g_sort_fn  = NULL;
 
+/* clear any sort comparator state. called from the REPL error handler
+ * after a longjmp out of bi_sort so a stale FnObj pointer cannot linger
+ * in g_sort_fn between sessions (audit F-430). bi_sort itself overrides
+ * these on every entry, so the state never produces a UAF, but a clean
+ * reset keeps the architecture defensive. */
+void mew_sort_state_reset(void) { g_sort_fn = NULL; g_sort_tmp = NULL; }
+
 static int sort_compare(Value a, Value b) {
     if (g_sort_fn) {
         Value args[2] = {a, b};

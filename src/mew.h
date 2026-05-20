@@ -24,7 +24,7 @@
 #  include <time.h>            /* nanosleep */
 #endif
 
-#define MEW_VERSION    "1.0.12"
+#define MEW_VERSION    "1.0.13"
 #define VSTACK_MAX     4096    /* max temporaries protected from gc */
 #define CALL_DEPTH_MAX 512     /* max recursion depth */
 #define INTERN_INITIAL 256
@@ -269,6 +269,7 @@ int   parse_needs_more(const char *src);
 
 void install_builtins(Env *e);
 void seed_rng_from_time(void);
+void mew_sort_state_reset(void);
 
 /* args list: defined in builtins.c, populated by main.c at startup */
 extern ListObj *g_args_list;
