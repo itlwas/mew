@@ -7,6 +7,12 @@
 #ifndef MEW_H
 #define MEW_H
 
+#if !defined(_WIN32) && !defined(_WIN64)
+#  ifndef _POSIX_C_SOURCE
+#    define _POSIX_C_SOURCE 199309L
+#  endif
+#endif
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
