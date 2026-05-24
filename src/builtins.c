@@ -35,7 +35,27 @@ static Value bi_write(int argc, Value *argv) {
 static Value bi_repr(int argc, Value *argv) {
     NEED(1);
     StrBuf b; sb_init(&b);
-    value_format(&b, argv[0], 1);
+    /* sandbox value_format so a die() from sb_need's 2GB cap or an OOM
+     * inside xrealloc unwinds through us. without this, b.data (up to
+     * ~2GB) leaks every time repr() fails (audit F-181). pattern mirrors
+     * bi_format. */
+    jmp_buf prev; int prev_set = g_err_jmp_set;
+    memcpy(&prev, &g_err_jmp, sizeof(prev));
+    g_err_jmp_set = 1;
+    volatile int v_failed = 0;
+    if (setjmp(g_err_jmp) == 0) {
+        value_format(&b, argv[0], 1);
+    } else {
+        v_failed = 1;
+    }
+    g_err_jmp_set = prev_set;
+    memcpy(&g_err_jmp, &prev, sizeof(prev));
+    if (v_failed) {
+        sb_free(&b);
+        char saved_msg[sizeof(g_err_msg)];
+        memcpy(saved_msg, g_err_msg, sizeof(saved_msg));
+        die("%s", saved_msg);
+    }
     StrObj *s = str_new(b.data ? b.data : "", b.len);
     sb_free(&b);
     return v_obj((Object *)s);
@@ -541,7 +561,12 @@ static Value bi_lines(int argc, Value *argv) {
     vpush(v_obj((Object *)l));
     const int MAX_LEN = 2147483000;
     int cap = 64, len = 0;
-    char *b = (char *)xmalloc((size_t)cap);
+    /* volatile per C99 7.13.2.1: b is reassigned by xrealloc inside the
+     * sandbox and read by free(b) after the longjmp branch, so it must
+     * survive the unwind. without this, a future compiler that places b
+     * in a callee-saved register would restore the pre-xrealloc pointer
+     * after longjmp and free a stale buffer (audit F-301). */
+    char * volatile b = (char *)xmalloc((size_t)cap);
     /* local error sandbox so a die() from xrealloc/str_new/list_push (OOM
      * or capacity-overflow paths) unwinds through us: we can then fclose
      * the FILE* and free the line buffer before re-raising. without this,
@@ -599,8 +624,16 @@ static Value bi_getenv(int argc, Value *argv) {
     if (n > 2147483000) die("getenv: value too long");
     return v_obj((Object *)str_new(e, (int)n));
 }
-static Value bi_clock(int argc, Value *argv) { (void)argc; (void)argv; return v_num((double)clock() / (double)CLOCKS_PER_SEC); }
-static Value bi_time (int argc, Value *argv) { (void)argc; (void)argv; return v_num((double)time(NULL)); }
+static Value bi_clock(int argc, Value *argv) {
+    (void)argc; (void)argv;
+    clock_t c = clock();
+    return v_num((double)c / (double)CLOCKS_PER_SEC);
+}
+static Value bi_time (int argc, Value *argv) {
+    (void)argc; (void)argv;
+    time_t t = time(NULL);
+    return v_num((double)t);
+}
 static Value bi_sleep(int argc, Value *argv) {
     NEED(1);
     double s = as_num(argv[0], "sleep");
@@ -734,13 +767,13 @@ static Value bi_format(int argc, Value *argv) {
         int left = 0, zero = 0, width = 0, precision = -1;
         while (p < e && (*p == '-' || *p == '0')) { if (*p == '-') left = 1; else zero = 1; p++; }
         while (p < e && *p >= '0' && *p <= '9') {
-            if (width > 100000) die("format: width too large");
+            if (width >= 100000) die("format: width too large");
             width = width * 10 + (*p - '0'); p++;
         }
         if (p < e && *p == '.') {
             p++; precision = 0;
             while (p < e && *p >= '0' && *p <= '9') {
-                if (precision > 100000) die("format: precision too large");
+                if (precision >= 100000) die("format: precision too large");
                 precision = precision * 10 + (*p - '0'); p++;
             }
         }
@@ -829,7 +862,8 @@ static Value bi_format(int argc, Value *argv) {
          * malicious script that multiplies many wide specifiers together. */
         if (out.len > (1 << 26)) die("format: output too large (>64 MB)");
     }
-    StrObj *r = str_new(out.data ? out.data : "", out.len);
+    StrObj *r;
+    r = str_new(out.data ? out.data : "", out.len);
     sb_free(&out);
     /* defensive: restore the value stack to the level we captured at entry
      * so any future change that adds an unbalanced vpush in the loop body

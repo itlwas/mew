@@ -874,7 +874,27 @@ void value_format(StrBuf *b, Value v, int repr) {
 
 void print_value_to(FILE *fp, Value v, int repr) {
     StrBuf b; sb_init(&b);
-    value_format(&b, v, repr);
+    /* sandbox value_format so a die() from sb_need's 2GB cap or an OOM
+     * inside xrealloc unwinds through us. without this, b.data (up to
+     * ~2GB) leaks on every failed print/write of a huge value (audit
+     * F-500). pattern mirrors bi_format. */
+    jmp_buf prev; int prev_set = g_err_jmp_set;
+    memcpy(&prev, &g_err_jmp, sizeof(prev));
+    g_err_jmp_set = 1;
+    volatile int v_failed = 0;
+    if (setjmp(g_err_jmp) == 0) {
+        value_format(&b, v, repr);
+    } else {
+        v_failed = 1;
+    }
+    g_err_jmp_set = prev_set;
+    memcpy(&g_err_jmp, &prev, sizeof(prev));
+    if (v_failed) {
+        sb_free(&b);
+        char saved_msg[sizeof(g_err_msg)];
+        memcpy(saved_msg, g_err_msg, sizeof(saved_msg));
+        die("%s", saved_msg);
+    }
     if (b.len) fwrite(b.data, 1, (size_t)b.len, fp);
     sb_free(&b);
 }
@@ -916,7 +936,27 @@ const char *type_cname(Value v) {
 StrObj *value_to_str(Value v) {
     if (v.tag == V_OBJ && v.as.o->tag == O_STR) return (StrObj *)v.as.o;
     StrBuf b; sb_init(&b);
-    value_format(&b, v, 0);
+    /* sandbox value_format so a die() from sb_need's 2GB cap or an OOM
+     * inside xrealloc unwinds through us. without this, b.data (up to
+     * ~2GB) leaks every time str() fails on a huge value (audit F-200).
+     * pattern mirrors bi_format. */
+    jmp_buf prev; int prev_set = g_err_jmp_set;
+    memcpy(&prev, &g_err_jmp, sizeof(prev));
+    g_err_jmp_set = 1;
+    volatile int v_failed = 0;
+    if (setjmp(g_err_jmp) == 0) {
+        value_format(&b, v, 0);
+    } else {
+        v_failed = 1;
+    }
+    g_err_jmp_set = prev_set;
+    memcpy(&g_err_jmp, &prev, sizeof(prev));
+    if (v_failed) {
+        sb_free(&b);
+        char saved_msg[sizeof(g_err_msg)];
+        memcpy(saved_msg, g_err_msg, sizeof(saved_msg));
+        die("%s", saved_msg);
+    }
     StrObj *s = str_new(b.data ? b.data : "", b.len);
     sb_free(&b);
     return s;
