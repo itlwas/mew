@@ -703,7 +703,7 @@ static Value bi_seed(int argc, Value *argv) {
     if (isnan(scaled) || isinf(scaled)) {
         /* fall back to xoring the raw bit pattern of s into the state,
          * which is always well defined */
-        uint64_t bits;
+        uint64_t bits = 0;
         memcpy(&bits, &s, sizeof(bits) < sizeof(s) ? sizeof(bits) : sizeof(s));
         u = (uint32_t)(bits ^ (bits >> 32));
     } else {

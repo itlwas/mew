@@ -36,11 +36,11 @@ Sometimes you want to compare two filenames, parse a CSV, or count words in a lo
 | Property | Value |
 |----------|-------|
 | Implementation | 6 ANSI C99 files in `src/` (`mew.h` + `core.c` + `parse.c` + `eval.c` + `builtins.c` + `main.c`) |
-| Source size | ~2900 lines, ~100 KB |
+| Source size | ~3644 lines, ~125 KB |
 | Binary size | 147 KB with `-Os -s`, 163 KB with `-O2` (x64 mingw) |
 | Types | 7: `nil`, `bool`, `number`, `string`, `list`, `map`, `fn` |
 | Keywords | 17 |
-| Builtins | 53 |
+| Builtins | 54 |
 | Documentation | one A6 page or a 10 KB JSON spec |
 | Dependencies | hosted libc only |
 | GC | mark-and-sweep with temporary-value protection |
@@ -72,12 +72,12 @@ The source compiles clean with `-Wall -Wextra -Wpedantic -Wshadow -Wstrict-proto
 
 | file | role | lines |
 |------|------|-------|
-| `src/mew.h` | public types and prototypes | 218 |
-| `src/core.c` | globals, errors, gc, strings, lists, maps, env, printing | 732 |
-| `src/parse.c` | lexer and recursive-descent parser | 625 |
-| `src/eval.c` | tree-walking interpreter and REPL helper | 407 |
-| `src/builtins.c` | 53 built-in functions | 902 |
-| `src/main.c` | entry point, REPL, CLI | 122 |
+| `src/mew.h` | public types and prototypes | 285 |
+| `src/core.c` | globals, errors, gc, strings, lists, maps, env, printing | 990 |
+| `src/parse.c` | lexer and recursive-descent parser | 723 |
+| `src/eval.c` | tree-walking interpreter and REPL helper | 438 |
+| `src/builtins.c` | 54 built-in functions | 1056 |
+| `src/main.c` | entry point, REPL, CLI | 152 |
 
 ## Getting started
 
@@ -185,7 +185,7 @@ assert(divide(10, 2) == 5, "math is broken")
 
 ## Standard library
 
-53 builtins, no external modules:
+54 builtins, no external modules:
 
 - **io**: `print`, `write`, `repr`, `read`
 - **types**: `len`, `type`, `str`, `num`

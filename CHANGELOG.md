@@ -519,7 +519,7 @@ Internal hardening pass, no user-visible language changes.
 - Recursion depth limit of 512 frames
 - setjmp/longjmp for REPL error recovery
 
-### Standard library (53 builtins)
+### Standard library (54 builtins)
 - io:         print, write, repr, read
 - types:      len, type, str, num
 - strings:    upper, lower, trim, repeat, starts_with, ends_with, contains,

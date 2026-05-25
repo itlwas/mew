@@ -129,7 +129,16 @@ static int       g_mark_top  = 0;
 static void mark_push(Object *o) {
     if (!o || o->marked) return;
     if (g_mark_top >= g_mark_cap) {
-        int nc = g_mark_cap ? g_mark_cap * 2 : 256;
+        /* saturating grow, mirrors list_push: cap*2 can't overflow int. */
+        const int MAX_CAP = 2147483000 / (int)sizeof(Object *);
+        int nc;
+        if (g_mark_cap == 0)               nc = 256;
+        else if (g_mark_cap > MAX_CAP / 2) nc = MAX_CAP;
+        else                               nc = g_mark_cap * 2;
+        if (nc <= g_mark_cap) {
+            fprintf(stderr, "mew: gc mark stack capacity overflow\n");
+            exit(2);
+        }
         g_mark_stack = (Object **)xrealloc(g_mark_stack, sizeof(Object *) * (size_t)nc);
         g_mark_cap = nc;
     }
@@ -227,7 +236,16 @@ static int    g_ast_top   = 0;
 static void ast_push(Node *n) {
     if (!n) return;
     if (g_ast_top >= g_ast_cap) {
-        int nc = g_ast_cap ? g_ast_cap * 2 : 256;
+        /* saturating grow, mirrors list_push. */
+        const int MAX_CAP = 2147483000 / (int)sizeof(Node *);
+        int nc;
+        if (g_ast_cap == 0)               nc = 256;
+        else if (g_ast_cap > MAX_CAP / 2) nc = MAX_CAP;
+        else                              nc = g_ast_cap * 2;
+        if (nc <= g_ast_cap) {
+            fprintf(stderr, "mew: ast walk stack capacity overflow\n");
+            exit(2);
+        }
         g_ast_stack = (Node **)xrealloc(g_ast_stack, sizeof(Node *) * (size_t)nc);
         g_ast_cap = nc;
     }
@@ -353,7 +371,16 @@ static int    g_ast_pin_top   = 0;
 
 void ast_pin_root(Node *root) {
     if (g_ast_pin_top >= g_ast_pin_cap) {
-        int nc = g_ast_pin_cap ? g_ast_pin_cap * 2 : 16;
+        /* saturating grow, mirrors list_push. */
+        const int MAX_CAP = 2147483000 / (int)sizeof(Node *);
+        int nc;
+        if (g_ast_pin_cap == 0)               nc = 16;
+        else if (g_ast_pin_cap > MAX_CAP / 2) nc = MAX_CAP;
+        else                                  nc = g_ast_pin_cap * 2;
+        if (nc <= g_ast_pin_cap) {
+            fprintf(stderr, "mew: ast pin stack capacity overflow\n");
+            exit(2);
+        }
         g_ast_pin_stack = (Node **)xrealloc(g_ast_pin_stack, sizeof(Node *) * (size_t)nc);
         g_ast_pin_cap = nc;
     }

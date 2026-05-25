@@ -54,7 +54,7 @@ Blocks do not create a scope, functions do. Assignment walks up the scope chain 
 ## Truthiness
 Only `false` and `nil` are falsy. Everything else is truthy (including `0` and `""`).
 
-## Builtins (53)
+## Builtins (54)
 ```
 # io
 print(...) write(...) repr(x) read() -> string|nil
